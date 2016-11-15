@@ -6,6 +6,7 @@ import io.vertx.scala.codegen.testmodel._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FlatSpec, Matchers}
+import collection.JavaConversions._
 
 /**
   * @author <a href="mailto:jochen.mader@codecentric.de">Jochen Mader</a

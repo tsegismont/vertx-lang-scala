@@ -1,7 +1,5 @@
 package io.vertx.lang.scala.streams.source
 
-import java.util.concurrent.atomic.AtomicReference
-
 import io.vertx.lang.scala.streams.api.{Sink, Source, TokenSubscription}
 import org.reactivestreams.{Publisher, Subscriber, Subscription}
 
@@ -11,8 +9,11 @@ class ReactiveStreamsPublisherSource[O](publisher: Publisher[O])(implicit ec: Ex
   protected var subscription: TokenSubscription = _
   protected var subscriber: Sink[O] = _
 
-  private val reactiveStreamsSubscription = new AtomicReference[Subscription]()
+  private var reactiveStreamsSubscription:Subscription = _
+  private var requested:Long = 0
 
+  //All methods in Subscriber might be called on a different thread so I delegate the actual action back to the
+  //event loop!
   publisher.subscribe(new Subscriber[O] {
     override def onError(t: Throwable): Unit = ec.execute(() => subscriber.onError(t))
 
@@ -20,7 +21,13 @@ class ReactiveStreamsPublisherSource[O](publisher: Publisher[O])(implicit ec: Ex
 
     override def onNext(t: O): Unit = ec.execute(() => subscriber.onNext(t))
 
-    override def onSubscribe(s: Subscription): Unit = reactiveStreamsSubscription.set(s)
+    override def onSubscribe(s: Subscription): Unit = ec.execute(() => {
+      reactiveStreamsSubscription = s
+      if(requested > 0) {
+        reactiveStreamsSubscription.request(requested)
+        requested = 0
+      }
+    })
   })
 
   override def subscribe(s: Sink[O]): Unit = {
@@ -28,11 +35,14 @@ class ReactiveStreamsPublisherSource[O](publisher: Publisher[O])(implicit ec: Ex
       throw new IllegalArgumentException("This Source only supports one TokenSubscription at a time")
     subscriber = s
     subscription = new TokenSubscription {
-      override def cancel(): Unit = reactiveStreamsSubscription.get().cancel()
+      override def cancel(): Unit = reactiveStreamsSubscription.cancel()
 
-      override def request(n: Long): Unit = {
-        reactiveStreamsSubscription.get().request(n)
-      }
+      override def request(n: Long): Unit =
+        if(reactiveStreamsSubscription != null)
+          reactiveStreamsSubscription.request(n)
+        else
+          requested = requested + n
+
     }
     subscriber.onSubscribe(subscription)
   }

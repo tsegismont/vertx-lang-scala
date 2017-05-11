@@ -18,6 +18,8 @@ class ReactiveStreamsSubscriberSink[I](subscriber: Subscriber[I])(implicit ec: V
 
   private var subscription: AtomicReference[TokenSubscription] = new AtomicReference[TokenSubscription]()
 
+  //All methods in Subscription might be called on a different thread so I delegate the actual action back to the
+  //event loop!
   private val reactiveStreamsSubscription = new Subscription {
     override def cancel(): Unit = ec.execute(() => subscription.get().cancel())
 

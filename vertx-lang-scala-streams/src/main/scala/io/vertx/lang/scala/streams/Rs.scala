@@ -115,23 +115,21 @@ object Rs {
       * @tparam O type of resulting events
       * @return a new source to attach further operations to
       */
-    def future[O](f: I => Future[O], failureHandler: (I, Throwable) => Unit = (a: I, t: Throwable) => {})(implicit ec: VertxExecutionContext): Source[O] = {
-      val stage = new FutureStage[I, O](f)
+    def mapAsync[O](f: I => Future[O], failureHandler: (I, Throwable) => Unit = (a: I, t: Throwable) => {})(implicit ec: VertxExecutionContext): Source[O] = {
+      val stage = new MapAsyncStage[I, O](f)
       source.subscribe(stage)
       stage
     }
 
     /**
-      * Execute the given function on a given [[WorkerExecutorExecutionContext]] and propagate the result to the stream.
-      * @param f function to be executed in a different thread.
-      * @param failureHandler called if the function fails
-      * @param wec [[WorkerExecutorExecutionContext]] to be used for the operation
-      * @param vec male sure all operations run on the [[VertxExecutionContext]]
-      * @tparam O output event type
+      * Incoming events are processed asynchronously.
+      * @param f fucntion producing a [[Future]]
+      * @param failureHandler called if the [[Future]] fails
+      * @param ec male sure all operations run on the [[VertxExecutionContext]]
       * @return a new source to attach further operations to
       */
-    def sync[O](f: I => O, failureHandler: (I, Throwable) => Unit = (a: I, t: Throwable) => {})(implicit wec: WorkerExecutorExecutionContext, vec: VertxExecutionContext): Source[O] = {
-      val stage = new SyncStage[I, O](f)
+    def processAsync(f: I => Future[Unit], failureHandler: (I, Throwable) => Unit = (a: I, t: Throwable) => {})(implicit ec: VertxExecutionContext): Source[I] = {
+      val stage = new ProcessAsyncStage[I](f)
       source.subscribe(stage)
       stage
     }

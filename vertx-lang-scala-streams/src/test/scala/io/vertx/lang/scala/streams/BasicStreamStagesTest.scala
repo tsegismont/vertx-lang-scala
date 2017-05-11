@@ -5,8 +5,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import io.vertx.lang.scala.ScalaVerticle.nameForVerticle
 import io.vertx.lang.scala.streams.sink.{FunctionSink, WriteStreamSink}
 import io.vertx.lang.scala.streams.source.{ReadStreamSource, VertxListSource}
-import io.vertx.lang.scala.streams.stage.{FilterStage, MapStage, ProcessStage, SyncStage}
-import io.vertx.lang.scala.{ScalaVerticle, VertxExecutionContext, WorkerExecutorExecutionContext}
+import io.vertx.lang.scala.streams.stage.{FilterStage, MapStage, ProcessStage}
+import io.vertx.lang.scala.{ScalaVerticle, VertxExecutionContext}
 import io.vertx.scala.core.Vertx
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -44,38 +44,6 @@ class StreamBasicsTest extends AsyncFlatSpec with Matchers with Assertions {
     })
 
     prom.future.map(s => s should equal(original))
-  }
-
-  "Using SyncStage" should "not change the thread the stream is running on" in {
-    val vertx = Vertx.vertx()
-    val ctx = vertx.getOrCreateContext()
-    implicit val ec = VertxExecutionContext(ctx)
-    implicit val wc = new WorkerExecutorExecutionContext(vertx.createSharedWorkerExecutor("test"))
-
-    val prom = Promise[List[String]]
-
-    ec.execute(() => {
-      val streamed = mutable.Buffer[String]()
-
-      val source = new VertxListSource[Int](List(1, 2, 3, 5, 8))
-      val syncStage = new SyncStage[Int, Int]((a: Int) => {
-        Thread.sleep(200)
-        a
-      })
-      val mapStage = new MapStage((i: Int) => s"${Thread.currentThread().getName.equals("vert.x-eventloop-thread-0")} $i")
-
-      val sink = new FunctionSink[String](f => {
-        streamed += f
-        if (streamed.size == 5)
-          prom.success(streamed.toList)
-      })
-
-      source.subscribe(syncStage)
-      syncStage.subscribe(mapStage)
-      mapStage.subscribe(sink)
-    })
-
-    prom.future.map(s => s should equal(List("true 1", "true 2", "true 3", "true 5", "true 8")))(ec)
   }
 
   "Using a MapStage" should "transform events" in {

@@ -16,15 +16,15 @@ import scala.util.{Failure, Success}
   * @tparam I input event type
   * @tparam O output event type
   */
-class FutureStage[I, O](f: I => Future[O], failureHandler: (I, Throwable) => Unit = (a: I, t: Throwable) => {})
-                       (implicit ec: VertxExecutionContext) extends SimpleStage[I, O] {
+class MapAsyncStage[I, O](f: I => Future[O], failureHandler: (I, Throwable) => Unit = (a: I, t: Throwable) => {})
+                         (implicit ec: VertxExecutionContext) extends SimpleStage[I, O] {
   protected val Log = ScalaLogger.getLogger(getClass.getName)
 
   override def next(event: I): Unit = {
     f(event).onComplete {
       case Success(i) => subscriber.onNext(i)
       case Failure(t) => {
-        Log.warn(s"Failed future for $event", t)
+        Log.warn(s"Failed mapAsync for $event", t)
         receiveSubscription.request(1)
         failureHandler(event, t)
       }

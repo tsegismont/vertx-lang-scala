@@ -19,10 +19,11 @@ class VertxStreamVerticle extends ScalaVerticle{
     server
       .requestStream().toSource
       .process(a => logs.send("A request has arrived"))
-      .sync(r => {
-        Thread.sleep(400)
-        (r, s"I ran on ${Thread.currentThread().getName} and waited a while")
-      })
+      .mapAsync(r =>
+        vertx.executeBlocking(() => {
+          Thread.sleep(400)
+          (r, s"I ran on ${Thread.currentThread().getName} and waited a while")
+        }))
       .sink(e => e._1.response().end(e._2), 10)
 
     server.listen(8080)

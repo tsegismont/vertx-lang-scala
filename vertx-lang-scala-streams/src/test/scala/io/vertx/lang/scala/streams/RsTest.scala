@@ -1,5 +1,6 @@
 package io.vertx.lang.scala.streams
 
+import io.vertx.scala.core.eventbus.Message
 import io.vertx.lang.scala.ScalaVerticle.nameForVerticle
 import io.vertx.lang.scala.streams.Rs._
 import io.vertx.lang.scala.{ScalaVerticle, VertxExecutionContext}
@@ -70,7 +71,8 @@ class FutureTestVerticle extends ScalaVerticle {
 
     consumer.bodyStream()
       .toSource
-      .future((a:String) => vertx.eventBus().sendFuture[String]("stageAddress", a))
+      .mapAsync((a:String) => vertx.eventBus().sendFuture[String]("stageAddress", a))
+      .mapAsync((a:Message[String]) => vertx.executeBlocking(() => a))
       .map(a => a.body())
       .sink(producer.toSink())
 

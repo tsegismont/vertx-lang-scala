@@ -4,7 +4,7 @@ import io.vertx.lang.scala.ScalaLogger
 
 /**
   * Several [[Stage]]s sit between a [[Source]] and [[Sink]]. This class provides a basic implementation that
-  * coordinates token handling between the two. 
+  * coordinates token handling between the two.
   * @tparam I incoming event type
   * @tparam O outgoing event type
   */
@@ -16,6 +16,10 @@ trait SimpleStage[I,O] extends Stage[I,O]{
   protected var sendSubscription: TokenSubscription = _
   protected var subscriber: Sink[O] = _
 
+  /**
+    * Called for each event passing through
+    * @param event the event passing through
+    */
   def next(event:I): Unit
 
   override def onNext(t: I): Unit = {

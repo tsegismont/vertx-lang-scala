@@ -4,8 +4,7 @@ import io.vertx.lang.scala.ScalaLogger
 
 /**
   * Basis for simple sinks. It takes care of handling tokens and all other basic operations.
-  * Each time tokens run out a new set of tokens is issued to the subscriber. The amount of tokens issued
-  * is governed by [[SimpleSink.batchSize]]
+  * Each time tokens run out a new set of tokens is issued to the subscriber.
   *
   * @tparam I incoming event type
   *
@@ -15,13 +14,26 @@ trait SimpleSink[I] extends Sink[I] {
 
   private val Log = ScalaLogger.getLogger(getClass.getName)
 
+  // Tokens left for upstream
   protected var tokens: Long = 0
+
   protected var subscription: TokenSubscription = _
 
+  /**
+    * Amount of tokens to issue upstream. May return a different number on each call.
+    * @return amount of tokens to issue.
+    */
   def batchSize: Long
 
+  /**
+    * Called for each event.
+    * @param event the event to process
+    */
   def next(event: I): Unit
 
+  /**
+    * Will be called to check if tokens are left and request new ones.
+    */
   protected def checkTokens(): Unit = {
     if (tokens == 0) {
       val bs: Long = batchSize
@@ -33,7 +45,7 @@ trait SimpleSink[I] extends Sink[I] {
   override def onNext(t: I): Unit = {
     if (tokens <= 0) {
       subscription.cancel()
-      throw new RuntimeException("Received an event but receiveTokens are exhausted, cancelling TokenSubscription")
+      throw new RuntimeException("Received an event but tokens are exhausted, cancelling TokenSubscription")
     }
     tokens -= 1
     next(t)
